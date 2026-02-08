@@ -50,5 +50,21 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
   if (env.CDP_SECRET) envVars.CDP_SECRET = env.CDP_SECRET;
   if (env.WORKER_URL) envVars.WORKER_URL = env.WORKER_URL;
 
+  // Web Search & Memory (NEW - 70% → 100%)
+  if (env.BRAVE_SEARCH_API_KEY) envVars.BRAVE_SEARCH_API_KEY = env.BRAVE_SEARCH_API_KEY;
+  if (env.GOOGLE_API_KEY) envVars.GOOGLE_API_KEY = env.GOOGLE_API_KEY;
+  if (env.OPENAI_EMBEDDINGS_ENABLED) envVars.OPENAI_EMBEDDINGS_ENABLED = env.OPENAI_EMBEDDINGS_ENABLED;
+
+  // Browser Management (NEW)
+  if (env.BROWSER_CLEANUP_ENABLED) envVars.BROWSER_CLEANUP_ENABLED = env.BROWSER_CLEANUP_ENABLED;
+  if (env.BROWSER_MAX_IDLE_MS) envVars.BROWSER_MAX_IDLE_MS = env.BROWSER_MAX_IDLE_MS;
+  if (env.BROWSER_CHECK_INTERVAL_MS) envVars.BROWSER_CHECK_INTERVAL_MS = env.BROWSER_CHECK_INTERVAL_MS;
+
+  // Email Reporting (NEW)
+  if (env.MAILER_SEND_API_KEY) envVars.MAILER_SEND_API_KEY = env.MAILER_SEND_API_KEY;
+  if (env.SENDGRID_API_KEY) envVars.SENDGRID_API_KEY = env.SENDGRID_API_KEY;
+  if (env.SYSTEM_REPORT_EMAIL) envVars.SYSTEM_REPORT_EMAIL = env.SYSTEM_REPORT_EMAIL;
+
   return envVars;
 }
+

@@ -29,6 +29,7 @@ import { createAccessMiddleware } from './auth';
 import { ensureMoltbotGateway, findExistingMoltbotProcess, syncToR2 } from './gateway';
 import { publicRoutes, api, adminUi, debug, cdp } from './routes';
 import { redactSensitiveParams } from './utils/logging';
+import { cleanupInactiveChromium } from './gateway/browser-cleanup';
 import loadingPageHtml from './assets/loading.html';
 import configErrorHtml from './assets/config-error.html';
 
@@ -117,6 +118,10 @@ function buildSandboxOptions(env: MoltbotEnv): SandboxOptions {
 // Main app
 const app = new Hono<AppEnv>();
 
+// Track browser cleanup monitor status globally
+let browserCleanupStarted = false;
+const browserCleanupInterval = 5 * 60 * 1000; // 5 minutes
+
 // =============================================================================
 // MIDDLEWARE: Applied to ALL routes
 // =============================================================================
@@ -137,6 +142,35 @@ app.use('*', async (c, next) => {
   const options = buildSandboxOptions(c.env);
   const sandbox = getSandbox(c.env.Sandbox, 'moltbot', options);
   c.set('sandbox', sandbox);
+
+  // Initialize browser cleanup monitor once (non-blocking)
+  if (!browserCleanupStarted && c.env.BROWSER_CLEANUP_ENABLED === 'true') {
+    browserCleanupStarted = true;
+    console.log('[Browser] Starting auto-cleanup monitor (every 5 minutes)...');
+    
+    // Schedule periodic cleanup (non-blocking)
+    const maxIdleMs = c.env.BROWSER_MAX_IDLE_MS 
+      ? parseInt(c.env.BROWSER_MAX_IDLE_MS) 
+      : 30 * 60 * 1000; // 30 minutes default
+    
+    const interval = setInterval(async () => {
+      try {
+        const result = await cleanupInactiveChromium(sandbox, {
+          maxIdleMs,
+          checkIntervalMs: browserCleanupInterval,
+          verbose: false,
+        });
+        if (result.killed > 0) {
+          console.log(`[Browser] Cleanup: killed ${result.killed} processes, ${result.failed} failed`);
+        }
+      } catch (err) {
+        console.error('[Browser] Cleanup error:', err instanceof Error ? err.message : String(err));
+      }
+    }, browserCleanupInterval);
+
+    // Interval runs in background (no need to store reference)
+  }
+
   await next();
 });
 

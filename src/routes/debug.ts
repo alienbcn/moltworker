@@ -401,4 +401,136 @@ debug.get('/container-config', async (c) => {
   }
 });
 
+// GET /debug/health - Detailed health check for gateway and channels
+debug.get('/health', async (c) => {
+  const sandbox = c.get('sandbox');
+  
+  interface HealthResponse {
+    timestamp: string;
+    gateway: {
+      status: string;
+      pid?: string;
+      http_status?: number;
+      responsive?: boolean;
+      error?: string;
+    };
+    telegram: {
+      status: string;
+      enabled?: boolean;
+      has_token?: boolean;
+      dm_policy?: string;
+      error?: string;
+    };
+    memory: {
+      status: string;
+      files?: number;
+      identity_file?: string;
+      error?: string;
+    };
+    processes: {
+      running: number;
+      total: number;
+    };
+    healthy?: boolean;
+  }
+  
+  const health: HealthResponse = {
+    timestamp: new Date().toISOString(),
+    gateway: { status: 'unknown' },
+    telegram: { status: 'unknown' },
+    memory: { status: 'unknown' },
+    processes: { running: 0, total: 0 },
+  };
+
+  try {
+    // Check if gateway process exists and is running
+    const processes = await sandbox.listProcesses();
+    health.processes.total = processes.length;
+    const gatewayProcess = processes.find((p) => 
+      p.command.includes('openclaw gateway') && p.status === 'running'
+    );
+    
+    if (gatewayProcess) {
+      health.processes.running = processes.filter((p) => p.status === 'running').length;
+      health.gateway.status = 'running';
+      health.gateway.pid = gatewayProcess.id;
+      
+      // Try to test the gateway API
+      try {
+        const response = await sandbox.containerFetch(
+          new Request('http://localhost:18789/'),
+          18789,
+        );
+        health.gateway.http_status = response.status;
+        health.gateway.responsive = response.ok;
+      } catch (e) {
+        health.gateway.responsive = false;
+        health.gateway.error = 'API not responding';
+      }
+    } else {
+      health.gateway.status = 'not_running';
+      health.gateway.responsive = false;
+    }
+
+    // Check Telegram configuration
+    try {
+      const configProc = await sandbox.startProcess('cat /root/.openclaw/openclaw.json 2>/dev/null || cat /root/.clawdbot/clawdbot.json');
+      await new Promise((r) => setTimeout(r, 1000));
+      const configLogs = await configProc.getLogs();
+      
+      if (configLogs.stdout) {
+        const config = JSON.parse(configLogs.stdout);
+        if (config.channels?.telegram?.enabled) {
+          health.telegram.enabled = true;
+          health.telegram.status = 'configured';
+          health.telegram.has_token = !!config.channels.telegram.botToken;
+          health.telegram.dm_policy = config.channels.telegram.dmPolicy;
+        } else {
+          health.telegram.enabled = false;
+          health.telegram.status = 'not_configured';
+        }
+      }
+    } catch (e) {
+      health.telegram.status = 'error';
+      health.telegram.error = e instanceof Error ? e.message : 'Unknown error reading config';
+    }
+
+    // Check memory/workspace persistence
+    try {
+      const memProc = await sandbox.startProcess('ls -la /root/clawd/memory/ 2>/dev/null | wc -l');
+      await new Promise((r) => setTimeout(r, 500));
+      const memLogs = await memProc.getLogs();
+      const fileCount = parseInt(memLogs.stdout || '0', 10);
+      
+      health.memory.status = fileCount > 2 ? 'has_data' : 'empty';
+      health.memory.files = fileCount;
+      
+      // Check identity file
+      const idProc = await sandbox.startProcess('test -f /root/clawd/IDENTITY.md && echo "exists" || echo "missing"');
+      await new Promise((r) => setTimeout(r, 500));
+      const idLogs = await idProc.getLogs();
+      health.memory.identity_file = idLogs.stdout?.trim() === 'exists' ? 'present' : 'missing';
+    } catch (e) {
+      health.memory.status = 'error';
+      health.memory.error = e instanceof Error ? e.message : 'Unknown error';
+    }
+
+    const isHealthy = 
+      health.gateway.status === 'running' && 
+      health.gateway.responsive &&
+      health.memory.status !== 'error';
+
+    return c.json({
+      healthy: isHealthy,
+      health,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return c.json({ 
+      healthy: false,
+      health: { ...health, error: errorMessage } 
+    }, 500);
+  }
+});
+
 export { debug };

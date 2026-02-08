@@ -42,6 +42,18 @@ export interface MoltbotEnv {
   BROWSER?: Fetcher;
   CDP_SECRET?: string; // Shared secret for CDP endpoint authentication
   WORKER_URL?: string; // Public URL of the worker (for CDP endpoint)
+  // NEW: Web Search & Memory (70% → 100%)
+  BRAVE_SEARCH_API_KEY?: string; // Brave Search API key for web search
+  GOOGLE_API_KEY?: string; // Google API key for Gemini embeddings
+  OPENAI_EMBEDDINGS_ENABLED?: string; // Enable OpenAI embeddings instead of Google
+  // NEW: Browser Management
+  BROWSER_CLEANUP_ENABLED?: string; // Enable automatic cleanup of inactive Chromium processes
+  BROWSER_MAX_IDLE_MS?: string; // Max idle time before killing browser process (default: 1800000 = 30min)
+  BROWSER_CHECK_INTERVAL_MS?: string; // Check interval for inactive processes (default: 300000 = 5min)
+  // NEW: Email Reporting
+  MAILER_SEND_API_KEY?: string; // MailerSend API key for email reporting
+  SENDGRID_API_KEY?: string; // SendGrid API key as alternative
+  SYSTEM_REPORT_EMAIL?: string; // Email address for system health reports
 }
 
 /**
