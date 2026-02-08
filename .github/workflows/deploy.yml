@@ -1,0 +1,89 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Sync Cloudflare secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          BRAVE_SEARCH_API_KEY: ${{ secrets.BRAVE_SEARCH_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          MAILER_SEND_API_KEY: ${{ secrets.MAILER_SEND_API_KEY }}
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          SYSTEM_REPORT_EMAIL: ${{ secrets.SYSTEM_REPORT_EMAIL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CLOUDFLARE_AI_GATEWAY_API_KEY: ${{ secrets.CLOUDFLARE_AI_GATEWAY_API_KEY }}
+          CF_AI_GATEWAY_ACCOUNT_ID: ${{ secrets.CF_AI_GATEWAY_ACCOUNT_ID }}
+          CF_AI_GATEWAY_GATEWAY_ID: ${{ secrets.CF_AI_GATEWAY_GATEWAY_ID }}
+          AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
+          AI_GATEWAY_BASE_URL: ${{ secrets.AI_GATEWAY_BASE_URL }}
+          MOLTBOT_GATEWAY_TOKEN: ${{ secrets.MOLTBOT_GATEWAY_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_DM_POLICY: ${{ secrets.TELEGRAM_DM_POLICY }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_DM_POLICY: ${{ secrets.DISCORD_DM_POLICY }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_APP_TOKEN: ${{ secrets.SLACK_APP_TOKEN }}
+          CDP_SECRET: ${{ secrets.CDP_SECRET }}
+          WORKER_URL: ${{ secrets.WORKER_URL }}
+        run: |
+          set -e
+          if [ -n "$R2_ACCESS_KEY_ID" ]; then echo "$R2_ACCESS_KEY_ID" | npx wrangler secret put R2_ACCESS_KEY_ID; fi
+          if [ -n "$R2_SECRET_ACCESS_KEY" ]; then echo "$R2_SECRET_ACCESS_KEY" | npx wrangler secret put R2_SECRET_ACCESS_KEY; fi
+          if [ -n "$CF_ACCOUNT_ID" ]; then echo "$CF_ACCOUNT_ID" | npx wrangler secret put CF_ACCOUNT_ID; fi
+          if [ -n "$BRAVE_SEARCH_API_KEY" ]; then echo "$BRAVE_SEARCH_API_KEY" | npx wrangler secret put BRAVE_SEARCH_API_KEY; fi
+          if [ -n "$GOOGLE_API_KEY" ]; then echo "$GOOGLE_API_KEY" | npx wrangler secret put GOOGLE_API_KEY; fi
+          if [ -n "$MAILER_SEND_API_KEY" ]; then echo "$MAILER_SEND_API_KEY" | npx wrangler secret put MAILER_SEND_API_KEY; fi
+          if [ -n "$SENDGRID_API_KEY" ]; then echo "$SENDGRID_API_KEY" | npx wrangler secret put SENDGRID_API_KEY; fi
+          if [ -n "$SYSTEM_REPORT_EMAIL" ]; then echo "$SYSTEM_REPORT_EMAIL" | npx wrangler secret put SYSTEM_REPORT_EMAIL; fi
+          if [ -n "$ANTHROPIC_API_KEY" ]; then echo "$ANTHROPIC_API_KEY" | npx wrangler secret put ANTHROPIC_API_KEY; fi
+          if [ -n "$OPENAI_API_KEY" ]; then echo "$OPENAI_API_KEY" | npx wrangler secret put OPENAI_API_KEY; fi
+          if [ -n "$CLOUDFLARE_AI_GATEWAY_API_KEY" ]; then echo "$CLOUDFLARE_AI_GATEWAY_API_KEY" | npx wrangler secret put CLOUDFLARE_AI_GATEWAY_API_KEY; fi
+          if [ -n "$CF_AI_GATEWAY_ACCOUNT_ID" ]; then echo "$CF_AI_GATEWAY_ACCOUNT_ID" | npx wrangler secret put CF_AI_GATEWAY_ACCOUNT_ID; fi
+          if [ -n "$CF_AI_GATEWAY_GATEWAY_ID" ]; then echo "$CF_AI_GATEWAY_GATEWAY_ID" | npx wrangler secret put CF_AI_GATEWAY_GATEWAY_ID; fi
+          if [ -n "$AI_GATEWAY_API_KEY" ]; then echo "$AI_GATEWAY_API_KEY" | npx wrangler secret put AI_GATEWAY_API_KEY; fi
+          if [ -n "$AI_GATEWAY_BASE_URL" ]; then echo "$AI_GATEWAY_BASE_URL" | npx wrangler secret put AI_GATEWAY_BASE_URL; fi
+          if [ -n "$MOLTBOT_GATEWAY_TOKEN" ]; then echo "$MOLTBOT_GATEWAY_TOKEN" | npx wrangler secret put MOLTBOT_GATEWAY_TOKEN; fi
+          if [ -n "$TELEGRAM_BOT_TOKEN" ]; then echo "$TELEGRAM_BOT_TOKEN" | npx wrangler secret put TELEGRAM_BOT_TOKEN; fi
+          if [ -n "$TELEGRAM_DM_POLICY" ]; then echo "$TELEGRAM_DM_POLICY" | npx wrangler secret put TELEGRAM_DM_POLICY; fi
+          if [ -n "$DISCORD_BOT_TOKEN" ]; then echo "$DISCORD_BOT_TOKEN" | npx wrangler secret put DISCORD_BOT_TOKEN; fi
+          if [ -n "$DISCORD_DM_POLICY" ]; then echo "$DISCORD_DM_POLICY" | npx wrangler secret put DISCORD_DM_POLICY; fi
+          if [ -n "$SLACK_BOT_TOKEN" ]; then echo "$SLACK_BOT_TOKEN" | npx wrangler secret put SLACK_BOT_TOKEN; fi
+          if [ -n "$SLACK_APP_TOKEN" ]; then echo "$SLACK_APP_TOKEN" | npx wrangler secret put SLACK_APP_TOKEN; fi
+          if [ -n "$CDP_SECRET" ]; then echo "$CDP_SECRET" | npx wrangler secret put CDP_SECRET; fi
+          if [ -n "$WORKER_URL" ]; then echo "$WORKER_URL" | npx wrangler secret put WORKER_URL; fi
+
+      - name: Deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy

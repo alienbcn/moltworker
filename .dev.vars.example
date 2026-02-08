@@ -37,6 +37,47 @@ MOLTBOT_GATEWAY_TOKEN=dev-token-change-in-prod
 # TELEGRAM_BOT_TOKEN=optional
 # DISCORD_BOT_TOKEN=optional
 
-# CDP (Chrome DevTools Protocol) configuration for browser automation
-# CDP_SECRET=shared-secret-for-cdp-auth
-# WORKER_URL=https://your-worker.example.com
+# ===== ADVANCED: Web Search, Memory & Automation (70% → 100%) =====
+
+# Web Search - Brave Search API for real-time information
+# Get key from: https://api.search.brave.com/
+BRAVE_SEARCH_API_KEY=your-brave-search-api-key
+
+# Semantic Memory - Google Gemini Embeddings (recommended)
+# Get key from: https://console.cloud.google.com/
+GOOGLE_API_KEY=your-google-api-key
+
+# Alternative: OpenAI Embeddings (if using OpenAI API key above)
+# OPENAI_EMBEDDINGS_ENABLED=true
+
+# ===== Browser Management (Memory Optimization) =====
+
+# Auto-cleanup of inactive Chromium processes
+# Prevents memory leaks in Cloudflare Sandbox
+BROWSER_CLEANUP_ENABLED=true
+BROWSER_MAX_IDLE_MS=1800000          # 30 minutes before killing inactive browser
+BROWSER_CHECK_INTERVAL_MS=300000     # Check every 5 minutes
+
+# ===== Email Reporting (Hourly System Health) =====
+
+# MailerSend API (recommended - free tier available)
+# Get key from: https://www.mailersend.com/
+MAILER_SEND_API_KEY=your-mailersend-api-key
+
+# Alternative: SendGrid
+# SENDGRID_API_KEY=SG.your-sendgrid-key
+
+# System report settings
+# Reports sent hourly to this address with: CPU, Memory, Gateway status, Errors
+SYSTEM_REPORT_EMAIL=you@example.com
+
+# ===== Telegram Configuration (for monetization) =====
+
+# Telegram DM Policy: 
+#   pairing  = Only approved users (device pairing required)
+#   open     = Any user can send messages
+# Start with 'pairing' for security, change to 'open' for public monetization
+TELEGRAM_DM_POLICY=pairing
+
+# Optionally restrict to specific user IDs (comma-separated)
+# TELEGRAM_DM_ALLOW_FROM=123456789,987654321

@@ -259,3 +259,99 @@ R2 is mounted via s3fs at `/data/moltbot`. Important gotchas:
 - **Process status**: The sandbox API's `proc.status` may not update immediately after a process completes. Instead of checking `proc.status === 'completed'`, verify success by checking for expected output (e.g., timestamp file exists after sync).
 
 - **R2 prefix migration**: Backups are now stored under `openclaw/` prefix in R2 (was `clawdbot/`). The startup script handles restoring from both old and new prefixes with automatic migration.
+
+## Telegram Bot Configuration
+
+Telegram needs special attention since it requires external API connectivity and proper channel setup.
+
+### Getting a Telegram Token
+
+1. Open Telegram and search for **@BotFather**
+2. Send `/start` then `/newbot`
+3. Follow the prompts to create a bot
+4. **Copy the token exactly** (format: `123456789:ABCdefGhIjKlMnOpqRsTuVwXyZ`)
+
+### Setting the Token in Wrangler
+
+```bash
+# Set the token as a secret
+wrangler secret put TELEGRAM_BOT_TOKEN
+# Paste the token when prompted
+
+# Verify it's set
+wrangler secret list | grep TELEGRAM
+```
+
+### Telegram Configuration in Config File
+
+The startup script automatically patches `/root/.openclaw/openclaw.json` with Telegram config:
+
+```json
+{
+  "channels": {
+    "telegram": {
+      "botToken": "123456789:ABCdefGh...",
+      "enabled": true,
+      "dmPolicy": "pairing"
+    }
+  }
+}
+```
+
+**Key fields:**
+- `botToken`: From BotFather (123456789:ALPHANUMERIC)
+- `enabled`: Should always be `true` if configured
+- `dmPolicy`: `"pairing"` (default) or `"open"` (allow any user)
+- `allowFrom`: Optional list of user IDs if using selective access
+
+### Common Telegram Issues
+
+**Bot doesn't respond to messages:**
+1. Verify token with: `curl "https://api.telegram.org/bot<TOKEN>/getMe"`
+2. Check gateway is running: `/debug/processes`
+3. Verify gateway is responsive: `/debug/health`
+4. Check config exists: `cat /root/.openclaw/openclaw.json | jq '.channels.telegram'`
+
+**Token format validation:**
+- Must be: `123456789:ALPHANUMERIC_WITH_DASH`
+- Script now warns instead of failing on format issues
+- OpenClaw will validate further at runtime
+
+**Gateway starts but Telegram doesn't work:**
+1. Check if token is valid (getMe call)
+2. Verify bot has admin rights in test group
+3. Ensure no firewall blocking api.telegram.org
+4. Check `/root/openclaw-startup.log` for Telegram-specific errors
+
+**Debugging steps:**
+```bash
+# 1. Make sure token is valid
+TOKEN=$(grep TELEGRAM_BOT_TOKEN .dev.vars | cut -d= -f2)
+curl "https://api.telegram.org/bot${TOKEN}/getMe"
+
+# 2. Check if config was written correctly
+cat /root/.openclaw/openclaw.json | jq '.channels.telegram'
+
+# 3. Check gateway is running
+ps aux | grep "openclaw gateway"
+
+# 4. Check if telegram connection works
+curl http://localhost:18789/health | jq '.health.telegram'
+
+# 5. Run detailed diagnostic
+./scripts/check-telegram-detailed.sh
+```
+
+### Telegram Channel Implementation Details
+
+OpenClaw uses **polling** (not webhooks) by default, which:
+- ✓ Works behind firewalls
+- ✓ Works in Cloudflare Sandbox
+- ✓ Simple to configure
+- ⚠ Slightly higher latency (1-2 sec polling interval)
+
+The gateway automatically:
+1. Uses the token to connect to Telegram polling API
+2. Polls for new messages every ~1 second
+3. Routes messages to the agent engine
+4. Sends agent responses back to Telegram

@@ -39,11 +39,10 @@
 		"command": "npm run build",
 	},
 	// Container configuration for the Moltbot sandbox
-	// Using pre-built OpenClaw image from ghcr.io registry
 	"containers": [
 		{
 			"class_name": "Sandbox",
-			"image": "ghcr.io/openclaw/openclaw:latest",
+			"image": "./Dockerfile",
 			"instance_type": "standard-1",
 			"max_instances": 1,
 		},
@@ -81,10 +80,6 @@
 	"browser": {
 		"binding": "BROWSER",
 	},
-        "vars": {
-                "CF_AI_GATEWAY_MODEL": "anthropic/claude-sonnet-4-5"
-        },
-
 	// Note: CF_ACCOUNT_ID should be set via `wrangler secret put CF_ACCOUNT_ID`
 	// Secrets to configure via `wrangler secret put`:
 	//
