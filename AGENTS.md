@@ -57,13 +57,22 @@ import { heavyLibrary } from 'heavy-library';
 export const myRoute = new Hono();
 myRoute.get('/', (c) => heavyLibrary.doWork());
 
-// ✅ GOOD: Lazy-loaded when route is accessed
+// ✅ GOOD: Lazy-loaded when route is accessed, with caching
+let myRouteCache: Hono | null = null;
 export async function getMyRoute() {
-  const { heavyLibrary } = await import('heavy-library');
-  const myRoute = new Hono();
-  myRoute.get('/', (c) => heavyLibrary.doWork());
-  return myRoute;
+  if (!myRouteCache) {
+    const { heavyLibrary } = await import('heavy-library');
+    myRouteCache = new Hono();
+    myRouteCache.get('/', (c) => heavyLibrary.doWork());
+  }
+  return myRouteCache;
 }
+
+// Then in index.ts:
+app.all('/my-route/*', async (c) => {
+  const route = await getMyRoute();
+  return route.fetch(c.req.raw, c.env, c.executionCtx);
+});
 ```
 
 ### Environment Variables
