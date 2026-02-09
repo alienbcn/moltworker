@@ -20,7 +20,7 @@
  * - SLACK_BOT_TOKEN + SLACK_APP_TOKEN: Slack tokens
  */
 
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { getSandbox, Sandbox, type SandboxOptions } from '@cloudflare/sandbox';
 
 import type { AppEnv, MoltbotEnv } from './types';
@@ -186,18 +186,14 @@ app.route('/', publicRoutes);
 // Lazy-loaded to avoid loading Puppeteer at Worker startup
 // Cache the loaded module to avoid repeated dynamic imports
 let cdpModuleCache: Awaited<ReturnType<typeof getCdp>> | null = null;
-app.all('/cdp/*', async (c) => {
+async function handleCdpRequest(c: Context<AppEnv>) {
   if (!cdpModuleCache) {
     cdpModuleCache = await getCdp();
   }
   return cdpModuleCache.fetch(c.req.raw, c.env, c.executionCtx);
-});
-app.all('/cdp', async (c) => {
-  if (!cdpModuleCache) {
-    cdpModuleCache = await getCdp();
-  }
-  return cdpModuleCache.fetch(c.req.raw, c.env, c.executionCtx);
-});
+}
+app.all('/cdp', handleCdpRequest);
+app.all('/cdp/*', handleCdpRequest);
 
 // =============================================================================
 // PROTECTED ROUTES: Cloudflare Access authentication required
