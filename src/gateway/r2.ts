@@ -63,16 +63,24 @@ export async function mountR2Storage(sandbox: Sandbox, env: MoltbotEnv): Promise
     return true;
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
-    console.log('R2 mount error:', errorMessage);
+    console.error('[R2] Mount error:', errorMessage);
+    console.error('[R2] Mount details:', {
+      bucketName,
+      endpoint: `https://${env.CF_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      hasAccessKey: !!env.R2_ACCESS_KEY_ID,
+      hasSecretKey: !!env.R2_SECRET_ACCESS_KEY,
+      hasAccountId: !!env.CF_ACCOUNT_ID,
+    });
 
     // Check again if it's mounted - the error might be misleading
     if (await isR2Mounted(sandbox)) {
-      console.log('R2 bucket is mounted despite error');
+      console.log('[R2] Bucket is mounted despite error - continuing');
       return true;
     }
 
     // Don't fail if mounting fails - moltbot can still run without persistent storage
-    console.error('Failed to mount R2 bucket:', err);
+    console.error('[R2] Failed to mount R2 bucket - gateway will run without persistence');
+    console.error('[R2] Check credentials and bucket permissions. Error:', err);
     return false;
   }
 }

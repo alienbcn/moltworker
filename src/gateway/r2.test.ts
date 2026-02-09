@@ -139,7 +139,13 @@ describe('mountR2Storage', () => {
       const result = await mountR2Storage(sandbox, env);
 
       expect(result).toBe(false);
-      expect(console.error).toHaveBeenCalledWith('Failed to mount R2 bucket:', expect.any(Error));
+      expect(console.error).toHaveBeenCalledWith(
+        '[R2] Failed to mount R2 bucket - gateway will run without persistence',
+      );
+      expect(console.error).toHaveBeenCalledWith(
+        '[R2] Check credentials and bucket permissions. Error:',
+        expect.any(Error),
+      );
     });
 
     it('returns true if mount fails but check shows it is actually mounted', async () => {
@@ -155,7 +161,7 @@ describe('mountR2Storage', () => {
       const result = await mountR2Storage(sandbox, env);
 
       expect(result).toBe(true);
-      expect(console.log).toHaveBeenCalledWith('R2 bucket is mounted despite error');
+      expect(console.log).toHaveBeenCalledWith('[R2] Bucket is mounted despite error - continuing');
     });
   });
 });
