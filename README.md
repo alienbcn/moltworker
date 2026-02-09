@@ -47,6 +47,7 @@ Notes:
 - **Device pairing** - Secure DM authentication requiring explicit approval
 - **Persistent conversations** - Chat history and context across sessions
 - **Agent runtime** - Extensible AI capabilities with workspace and skills
+- **Web Browser Automation** - Playwright MCP integration for real web navigation and scraping
 
 This project packages OpenClaw to run in a [Cloudflare Sandbox](https://developers.cloudflare.com/sandbox/) container, providing a fully managed, always-on deployment without needing to self-host. Optional R2 storage enables persistence across container restarts.
 
@@ -346,6 +347,45 @@ node /root/clawd/skills/cloudflare-browser/scripts/video.js "https://site1.com,h
 ```
 
 See `skills/cloudflare-browser/SKILL.md` for full documentation.
+
+## Optional: Web Browser Search (Playwright MCP)
+
+JASPER can perform intelligent web searches using a dual-strategy approach:
+
+1. **Brave Search API** (primary) - Fast text-based searches
+2. **Playwright Browser** (fallback) - Full browser automation for JavaScript-heavy sites
+
+### Enable Brave Search API (Optional)
+
+```bash
+# Get API key from https://api.search.brave.com/
+npx wrangler secret put BRAVE_SEARCH_API_KEY
+```
+
+The Playwright browser automation is **always available** as a fallback, even without the Brave API key. It's configured automatically via MCP (Model Context Protocol).
+
+### Features
+
+- Navigate complex JavaScript sites (SPAs, React, Vue)
+- Extract visual content from rendered pages
+- Fill forms and interact with web pages
+- Take screenshots of web content
+- Automatic fallback from API to browser when needed
+
+### Testing
+
+After deployment, test the browser integration:
+
+```bash
+# SSH into your worker (if available) or check logs
+# The startup script automatically configures Playwright MCP
+
+# View browser configuration
+cat ~/.openclaw/openclaw.json | grep -A 10 '"browser"'
+cat ~/.openclaw/openclaw.json | grep -A 5 '"mcpServers"'
+```
+
+See `skills/web-browser-search/README.md` for detailed documentation.
 
 ## Optional: Cloudflare AI Gateway
 
