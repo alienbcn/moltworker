@@ -17,8 +17,35 @@ RUN ARCH="$(dpkg --print-architecture)" \
     && node --version \
     && npm --version
 
+# Install Playwright system dependencies for headless browser
+# These are required for Chromium, Firefox, and WebKit to run in headless mode
+RUN apt-get update && apt-get install -y \
+    libnss3 \
+    libnspr4 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libdbus-1-3 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libpango-1.0-0 \
+    libcairo2 \
+    libasound2 \
+    libatspi2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install pnpm globally
 RUN npm install -g pnpm
+
+# Install Playwright and Playwright MCP server globally
+# These are needed for browser automation via MCP
+RUN npm install -g playwright@1.49.0 @modelcontextprotocol/server-playwright@0.9.0 \
+    && npx playwright install chromium --with-deps
 
 # Install OpenClaw (formerly clawdbot/moltbot)
 # Pin to specific version for reproducible builds
@@ -32,9 +59,9 @@ RUN mkdir -p /root/.openclaw \
     && mkdir -p /root/clawd/skills
 
 # Copy startup script
-# Build cache bust: 2026-02-08T11:15-fix-eofpatch
+# Build cache bust: 2026-02-09-v29-playwright-mcp-integration
 COPY start-openclaw.sh /usr/local/bin/start-openclaw.sh
-RUN chmod +x /usr/local/bin/start-openclaw.sh && echo "Build: 2026-02-08T11:15"
+RUN chmod +x /usr/local/bin/start-openclaw.sh && echo "Build: 2026-02-09-v29-playwright"
 
 # Copy custom skills
 COPY skills/ /root/clawd/skills/

@@ -391,6 +391,32 @@ if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_APP_TOKEN) {
 
 fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 console.log('Configuration patched successfully');
+
+// ============================================================
+// CONFIGURE MCP SERVERS (Playwright Browser)
+// ============================================================
+// Add Playwright MCP server for browser automation
+// This allows JASPER to navigate web pages, extract content, and interact with JavaScript-heavy sites
+config.mcpServers = config.mcpServers || {};
+config.mcpServers.playwright = {
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-playwright'],
+    env: {}
+};
+
+// Configure browser profile for OpenClaw-managed browser
+config.browser = config.browser || {};
+config.browser.enabled = true;
+config.browser.defaultProfile = 'openclaw';
+config.browser.headless = true;
+config.browser.profiles = config.browser.profiles || {};
+config.browser.profiles.openclaw = {
+    cdpPort: 18800,
+    color: '#FF4500'
+};
+
+fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+console.log('MCP servers and browser configuration added successfully');
 EOFPATCH
 
 # ============================================================
