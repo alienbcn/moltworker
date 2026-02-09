@@ -1,0 +1,18 @@
+# Test configuration for operational verification
+ANTHROPIC_API_KEY=sk-ant-test123
+MOLTBOT_GATEWAY_TOKEN=test-token-12345
+
+# Telegram Bot (using a test token format)
+TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrsTUVwxyz123456789
+
+# CDP Configuration
+CDP_SECRET=test-cdp-secret-123456
+WORKER_URL=https://test-worker.workers.dev
+
+# Email Configuration
+MAILER_SEND_API_KEY=test-mailersend-key
+SYSTEM_REPORT_EMAIL=carriertrafic@gmail.com
+
+# Development mode
+DEV_MODE=true
+DEBUG_ROUTES=true
