@@ -90,7 +90,7 @@ describe('syncToR2', () => {
       const result = await syncToR2(sandbox, env);
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Sync failed');
+      expect(result.error).toBe('Sync failed: No timestamp file created');
     });
 
     it('verifies rsync command is called with correct flags', async () => {
