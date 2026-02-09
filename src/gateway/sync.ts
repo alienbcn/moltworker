@@ -4,6 +4,9 @@ import { R2_MOUNT_PATH } from '../config';
 import { mountR2Storage } from './r2';
 import { waitForProcess } from './utils';
 
+// Maximum length for truncated log output
+const MAX_LOG_OUTPUT_LENGTH = 200;
+
 export interface SyncResult {
   success: boolean;
   lastSync?: string;
@@ -95,9 +98,9 @@ export async function syncToR2(sandbox: Sandbox, env: MoltbotEnv): Promise<SyncR
     const stdout = syncLogs.stdout || '';
     const stderr = syncLogs.stderr || '';
     
-    console.log('[R2 Sync] Command output:', stdout.slice(0, 200));
+    console.log('[R2 Sync] Command output:', stdout.slice(0, MAX_LOG_OUTPUT_LENGTH));
     if (stderr) {
-      console.warn('[R2 Sync] Command stderr:', stderr.slice(0, 200));
+      console.warn('[R2 Sync] Command stderr:', stderr.slice(0, MAX_LOG_OUTPUT_LENGTH));
     }
 
     // Check for success by reading the timestamp file

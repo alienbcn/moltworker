@@ -206,12 +206,12 @@ app.use('*', async (c, next) => {
   const missingVars = validateRequiredEnv(c.env);
   if (missingVars.length > 0) {
     console.error('[CONFIG] Missing required environment variables:', missingVars.join(', '));
-    
+
     // WARNING: Log but don't block - let the gateway start anyway
     // The gateway will handle missing AI keys internally and can still respond to Telegram
     console.warn('[CONFIG] Gateway will start but AI features may be limited');
     console.warn('[CONFIG] Missing vars:', missingVars.join(', '));
-    
+
     // Store missing vars in context for later use
     c.set('missingVars', missingVars);
   }
@@ -310,7 +310,7 @@ app.all('*', async (c) => {
       userMessage = 'Gateway failed to start due to missing configuration. The bot cannot respond until API keys are configured.';
     } else if (!c.env.ANTHROPIC_API_KEY && !c.env.OPENAI_API_KEY && !c.env.CLOUDFLARE_AI_GATEWAY_API_KEY) {
       hint = 'No AI API keys configured. Run: wrangler secret put ANTHROPIC_API_KEY';
-      userMessage = 'Conexión exitosa, pero falta configurar las API Keys de IA';
+      userMessage = 'Connection successful, but AI API Keys need to be configured';
     } else if (errorMessage.includes('heap out of memory') || errorMessage.includes('OOM')) {
       hint = 'Gateway ran out of memory. Try again or check for memory leaks.';
     } else if (errorMessage.includes('R2') || errorMessage.includes('bucket')) {
