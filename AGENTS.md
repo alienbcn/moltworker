@@ -9,6 +9,7 @@ This is a Cloudflare Worker that runs [OpenClaw](https://github.com/openclaw/ope
 - Admin UI at `/_admin/` for device management
 - API endpoints at `/api/*` for device pairing
 - Debug endpoints at `/debug/*` for troubleshooting
+- CDP (Chrome DevTools Protocol) endpoint at `/cdp` for browser automation (lazy-loaded)
 
 **Note:** The CLI tool and npm package are now named `openclaw`. Config files use `.openclaw/openclaw.json`. Legacy `.clawdbot` paths are supported for backward compatibility during transition.
 
@@ -40,6 +41,48 @@ src/
 ```
 
 ## Key Patterns
+
+### Lazy Loading Heavy Dependencies
+
+To avoid exceeding Cloudflare Worker CPU limits during initialization, heavy dependencies like Puppeteer/Playwright are lazy-loaded:
+
+- **CDP Route**: The `/cdp` endpoint uses `@cloudflare/puppeteer` (~682KB), which is only loaded when the endpoint is accessed
+- **Implementation**: Use dynamic `import()` to defer loading until needed
+- **Example**: `src/routes/index.ts` exports `getCdp()` which uses `await import('./cdp')` instead of static import
+
+**Pattern for adding new heavy dependencies:**
+```typescript
+// ❌ BAD: Loads at Worker startup
+import { heavyLibrary } from 'heavy-library';
+export const myRoute = new Hono();
+myRoute.get('/', (c) => heavyLibrary.doWork());
+
+// ✅ GOOD: Lazy-loaded when route is accessed, with caching
+// In routes/my-route.ts (this file won't load until getMyRoute() is called):
+import { Hono } from 'hono';
+import { heavyLibrary } from 'heavy-library';  // Safe: only loads when this module loads
+
+const myRoute = new Hono();
+myRoute.get('/', (c) => heavyLibrary.doWork());
+export { myRoute };
+
+// In routes/index.ts:
+export async function getMyRoute() {
+  const { myRoute } = await import('./my-route');  // Dynamic import defers loading
+  return myRoute;
+}
+
+// In index.ts (main app file):
+let myRouteCache: Awaited<ReturnType<typeof getMyRoute>> | null = null;
+async function handleMyRouteRequest(c: Context<AppEnv>) {
+  if (!myRouteCache) {
+    myRouteCache = await getMyRoute();  // Heavy library only loads here, on first request
+  }
+  return myRouteCache.fetch(c.req.raw, c.env, c.executionCtx);
+}
+app.all('/my-route', handleMyRouteRequest);
+app.all('/my-route/*', handleMyRouteRequest);
+```
 
 ### Environment Variables
 

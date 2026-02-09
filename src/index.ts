@@ -20,14 +20,14 @@
  * - SLACK_BOT_TOKEN + SLACK_APP_TOKEN: Slack tokens
  */
 
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { getSandbox, Sandbox, type SandboxOptions } from '@cloudflare/sandbox';
 
 import type { AppEnv, MoltbotEnv } from './types';
 import { MOLTBOT_PORT } from './config';
 import { createAccessMiddleware } from './auth';
 import { ensureMoltbotGateway, findExistingMoltbotProcess, syncToR2 } from './gateway';
-import { publicRoutes, api, adminUi, debug, cdp } from './routes';
+import { publicRoutes, api, adminUi, debug, getCdp } from './routes';
 import { redactSensitiveParams } from './utils/logging';
 import { cleanupInactiveChromium } from './gateway/browser-cleanup';
 import loadingPageHtml from './assets/loading.html';
@@ -183,7 +183,17 @@ app.use('*', async (c, next) => {
 app.route('/', publicRoutes);
 
 // Mount CDP routes (uses shared secret auth via query param, not CF Access)
-app.route('/cdp', cdp);
+// Lazy-loaded to avoid loading Puppeteer at Worker startup
+// Cache the loaded module to avoid repeated dynamic imports
+let cdpRouteCache: Awaited<ReturnType<typeof getCdp>> | null = null;
+async function handleCdpRequest(c: Context<AppEnv>) {
+  if (!cdpRouteCache) {
+    cdpRouteCache = await getCdp();
+  }
+  return cdpRouteCache.fetch(c.req.raw, c.env, c.executionCtx);
+}
+app.all('/cdp', handleCdpRequest);
+app.all('/cdp/*', handleCdpRequest);
 
 // =============================================================================
 // PROTECTED ROUTES: Cloudflare Access authentication required

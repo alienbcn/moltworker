@@ -11,6 +11,11 @@ import puppeteer, { type Browser, type Page } from '@cloudflare/puppeteer';
  * Authentication: Pass secret as query param `?secret=<secret>` on WebSocket connect.
  * This route is intentionally NOT protected by Cloudflare Access.
  *
+ * ⚠️ IMPORTANT: This module is LAZY-LOADED to avoid loading Puppeteer at Worker startup.
+ * Puppeteer/Playwright is heavy (~682KB) and can cause Workers to exceed CPU limits
+ * during initialization. This module is only imported when CDP endpoints are accessed.
+ * Do NOT import this module directly in other files - use getCdp() from routes/index.ts.
+ *
  * Supported CDP domains:
  * - Browser: getVersion, close
  * - Target: createTarget, closeTarget, getTargets
