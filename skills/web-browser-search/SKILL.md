@@ -119,7 +119,7 @@ This skill integrates with OpenClaw's MCP framework:
   "mcpServers": {
     "playwright": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-playwright"]
+      "args": ["-y", "@playwright/mcp"]
     }
   }
 }

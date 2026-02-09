@@ -400,7 +400,7 @@ console.log('Configuration patched successfully');
 config.mcpServers = config.mcpServers || {};
 config.mcpServers.playwright = {
     command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-playwright'],
+    args: ['-y', '@playwright/mcp'],
     env: {}
 };
 

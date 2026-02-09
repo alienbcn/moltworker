@@ -44,7 +44,8 @@ RUN npm install -g pnpm
 
 # Install Playwright and Playwright MCP server globally
 # These are needed for browser automation via MCP
-RUN npm install -g playwright@1.49.0 @modelcontextprotocol/server-playwright@0.9.0 \
+# Using latest Playwright 1.58.2 which fixes SSL certificate verification vulnerability
+RUN npm install -g playwright@1.58.2 @playwright/mcp@0.0.64 \
     && npx playwright install chromium --with-deps
 
 # Install OpenClaw (formerly clawdbot/moltbot)
