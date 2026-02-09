@@ -12,4 +12,5 @@ export default defineConfig({
       exclude: ['src/client/**', 'node_modules/**', '**/*.test.ts'],
     },
   },
+  assetsInclude: ['**/*.html'],
 })
