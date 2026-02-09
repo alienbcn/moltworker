@@ -32,12 +32,16 @@ export interface SyncResult {
 export async function syncToR2(sandbox: Sandbox, env: MoltbotEnv): Promise<SyncResult> {
   // Check if R2 is configured
   if (!env.R2_ACCESS_KEY_ID || !env.R2_SECRET_ACCESS_KEY || !env.CF_ACCOUNT_ID) {
+    console.log('[R2 Sync] R2 storage is not configured - skipping backup');
     return { success: false, error: 'R2 storage is not configured' };
   }
+
+  console.log('[R2 Sync] Starting backup sync to R2...');
 
   // Mount R2 if not already mounted
   const mounted = await mountR2Storage(sandbox, env);
   if (!mounted) {
+    console.error('[R2 Sync] Failed to mount R2 storage - cannot backup');
     return { success: false, error: 'Failed to mount R2 storage' };
   }
 
@@ -60,6 +64,7 @@ export async function syncToR2(sandbox: Sandbox, env: MoltbotEnv): Promise<SyncR
       if (legacyLogs.stdout?.includes('ok')) {
         configDir = '/root/.clawdbot';
       } else {
+        console.error('[R2 Sync] Config verification failed: no openclaw.json or clawdbot.json found');
         return {
           success: false,
           error: 'Sync aborted: no config file found',
@@ -68,6 +73,7 @@ export async function syncToR2(sandbox: Sandbox, env: MoltbotEnv): Promise<SyncR
       }
     }
   } catch (err) {
+    console.error('[R2 Sync] Failed to verify source files:', err);
     return {
       success: false,
       error: 'Failed to verify source files',
@@ -78,6 +84,7 @@ export async function syncToR2(sandbox: Sandbox, env: MoltbotEnv): Promise<SyncR
   // Sync to the new openclaw/ R2 prefix (even if source is legacy .clawdbot)
   // Also sync workspace directory with memory, identity, and assets
   // This ensures that conversation memory, user identity, and skills are preserved
+  console.log('[R2 Sync] Syncing config from', configDir, 'to R2');
   const syncCmd = `rsync -r --no-times --delete --exclude='*.lock' --exclude='*.log' --exclude='*.tmp' --exclude='node_modules' ${configDir}/ ${R2_MOUNT_PATH}/openclaw/ 2>&1 && rsync -r --no-times --delete --exclude='skills' --exclude='node_modules' /root/clawd/ ${R2_MOUNT_PATH}/workspace/ 2>&1 && rsync -r --no-times --delete /root/clawd/skills/ ${R2_MOUNT_PATH}/skills/ 2>&1 && date -Iseconds > ${R2_MOUNT_PATH}/.last-sync && echo "Sync completed successfully"`;
 
   try {
@@ -87,6 +94,11 @@ export async function syncToR2(sandbox: Sandbox, env: MoltbotEnv): Promise<SyncR
     const syncLogs = await proc.getLogs();
     const stdout = syncLogs.stdout || '';
     const stderr = syncLogs.stderr || '';
+    
+    console.log('[R2 Sync] Command output:', stdout.slice(0, 200));
+    if (stderr) {
+      console.warn('[R2 Sync] Command stderr:', stderr.slice(0, 200));
+    }
 
     // Check for success by reading the timestamp file
     const timestampProc = await sandbox.startProcess(`cat ${R2_MOUNT_PATH}/.last-sync`);
@@ -104,12 +116,14 @@ export async function syncToR2(sandbox: Sandbox, env: MoltbotEnv): Promise<SyncR
       await waitForProcess(verifyProc, 10000);
       const verifyLogs = await verifyProc.getLogs();
       
+      console.log('[R2 Sync] Sync completed successfully at', lastSync);
       return { 
         success: true, 
         lastSync,
         details: `Synced config, workspace (including memory), and skills. Verification:\n${verifyLogs.stdout || ''}`,
       };
     } else {
+      console.error('[R2 Sync] Sync failed: No valid timestamp file created');
       return {
         success: false,
         error: 'Sync failed: No timestamp file created',
@@ -117,6 +131,7 @@ export async function syncToR2(sandbox: Sandbox, env: MoltbotEnv): Promise<SyncR
       };
     }
   } catch (err) {
+    console.error('[R2 Sync] Sync error:', err);
     return {
       success: false,
       error: 'Sync error',

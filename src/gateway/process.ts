@@ -72,13 +72,14 @@ export async function findExistingMoltbotProcess(sandbox: Sandbox): Promise<Proc
 export async function ensureMoltbotGateway(sandbox: Sandbox, env: MoltbotEnv): Promise<Process> {
   // Mount R2 storage for persistent data (non-blocking if not configured)
   // R2 is used as a backup - the startup script will restore from it on boot
+  console.log('[Gateway] Mounting R2 storage...');
   await mountR2Storage(sandbox, env);
 
   // Check if gateway is already running or starting
   const existingProcess = await findExistingMoltbotProcess(sandbox);
   if (existingProcess) {
     console.log(
-      'Found existing gateway process:',
+      '[Gateway] Found existing gateway process:',
       existingProcess.id,
       'status:',
       existingProcess.status,
@@ -116,6 +117,10 @@ export async function ensureMoltbotGateway(sandbox: Sandbox, env: MoltbotEnv): P
 
   console.log('[Gateway] Starting process with command:', command);
   console.log('[Gateway] Environment vars being passed:', Object.keys(envVars));
+  console.log('[Gateway] Has ANTHROPIC_API_KEY:', !!env.ANTHROPIC_API_KEY);
+  console.log('[Gateway] Has OPENAI_API_KEY:', !!env.OPENAI_API_KEY);
+  console.log('[Gateway] Has TELEGRAM_BOT_TOKEN:', !!env.TELEGRAM_BOT_TOKEN);
+  console.log('[Gateway] Has R2 configured:', !!(env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY));
 
   let process: Process;
   try {

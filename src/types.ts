@@ -72,6 +72,7 @@ export type AppEnv = {
   Variables: {
     sandbox: Sandbox;
     accessUser?: AccessUser;
+    missingVars?: string[];
   };
 };
 

@@ -206,24 +206,14 @@ app.use('*', async (c, next) => {
   const missingVars = validateRequiredEnv(c.env);
   if (missingVars.length > 0) {
     console.error('[CONFIG] Missing required environment variables:', missingVars.join(', '));
-
-    const acceptsHtml = c.req.header('Accept')?.includes('text/html');
-    if (acceptsHtml) {
-      // Return a user-friendly HTML error page
-      const html = configErrorHtml.replace('{{MISSING_VARS}}', missingVars.join(', '));
-      return c.html(html, 503);
-    }
-
-    // Return JSON error for API requests
-    return c.json(
-      {
-        error: 'Configuration error',
-        message: 'Required environment variables are not configured',
-        missing: missingVars,
-        hint: 'Set these using: wrangler secret put <VARIABLE_NAME>',
-      },
-      503,
-    );
+    
+    // WARNING: Log but don't block - let the gateway start anyway
+    // The gateway will handle missing AI keys internally and can still respond to Telegram
+    console.warn('[CONFIG] Gateway will start but AI features may be limited');
+    console.warn('[CONFIG] Missing vars:', missingVars.join(', '));
+    
+    // Store missing vars in context for later use
+    c.set('missingVars', missingVars);
   }
 
   return next();
@@ -293,21 +283,53 @@ app.all('*', async (c) => {
   try {
     await ensureMoltbotGateway(sandbox, c.env);
   } catch (error) {
-    console.error('[PROXY] Failed to start Moltbot:', error);
+    console.error('[PROXY] Failed to start Moltbot gateway:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    // Log full error details for debugging
+    console.error('[PROXY] Error details:', {
+      message: errorMessage,
+      stack: errorStack,
+      path: url.pathname,
+      method: c.req.method,
+      hasAnthropicKey: !!c.env.ANTHROPIC_API_KEY,
+      hasOpenAIKey: !!c.env.OPENAI_API_KEY,
+      hasCloudflareGateway: !!(c.env.CLOUDFLARE_AI_GATEWAY_API_KEY && c.env.CF_AI_GATEWAY_ACCOUNT_ID),
+      hasR2Bucket: !!c.env.MOLTBOT_BUCKET,
+      hasTelegramToken: !!c.env.TELEGRAM_BOT_TOKEN,
+    });
 
+    // Check for missing configuration
+    const missingVars = c.get('missingVars') || [];
     let hint = 'Check worker logs with: wrangler tail';
-    if (!c.env.ANTHROPIC_API_KEY) {
-      hint = 'ANTHROPIC_API_KEY is not set. Run: wrangler secret put ANTHROPIC_API_KEY';
+    let userMessage = errorMessage;
+    
+    if (missingVars.length > 0) {
+      hint = `Missing configuration: ${missingVars.join(', ')}. Run: wrangler secret put <VARIABLE_NAME>`;
+      userMessage = 'Gateway failed to start due to missing configuration. The bot cannot respond until API keys are configured.';
+    } else if (!c.env.ANTHROPIC_API_KEY && !c.env.OPENAI_API_KEY && !c.env.CLOUDFLARE_AI_GATEWAY_API_KEY) {
+      hint = 'No AI API keys configured. Run: wrangler secret put ANTHROPIC_API_KEY';
+      userMessage = 'Conexión exitosa, pero falta configurar las API Keys de IA';
     } else if (errorMessage.includes('heap out of memory') || errorMessage.includes('OOM')) {
       hint = 'Gateway ran out of memory. Try again or check for memory leaks.';
+    } else if (errorMessage.includes('R2') || errorMessage.includes('bucket')) {
+      hint = 'R2 bucket access failed. Check R2 credentials and permissions.';
+      console.error('[PROXY] R2 error detected. Verify R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and bucket permissions.');
+    } else if (errorMessage.includes('timeout')) {
+      hint = 'Gateway startup timed out. The container may need more time or there may be network issues.';
     }
 
     return c.json(
       {
         error: 'Moltbot gateway failed to start',
-        details: errorMessage,
+        details: userMessage,
         hint,
+        debug: {
+          originalError: errorMessage,
+          timestamp: new Date().toISOString(),
+          path: url.pathname,
+        },
       },
       503,
     );
