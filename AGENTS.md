@@ -58,9 +58,9 @@ export const myRoute = new Hono();
 myRoute.get('/', (c) => heavyLibrary.doWork());
 
 // ✅ GOOD: Lazy-loaded when route is accessed, with caching
-// In routes/my-route.ts:
+// In routes/my-route.ts (this file won't load until getCdp() is called):
 import { Hono } from 'hono';
-import { heavyLibrary } from 'heavy-library';
+import { heavyLibrary } from 'heavy-library';  // Safe: only loads when this module loads
 
 const myRoute = new Hono();
 myRoute.get('/', (c) => heavyLibrary.doWork());
@@ -68,15 +68,15 @@ export { myRoute };
 
 // In routes/index.ts:
 export async function getMyRoute() {
-  const { myRoute } = await import('./my-route');
+  const { myRoute } = await import('./my-route');  // Dynamic import defers loading
   return myRoute;
 }
 
-// In index.ts:
+// In index.ts (main app file):
 let myRouteCache: Awaited<ReturnType<typeof getMyRoute>> | null = null;
 async function handleMyRouteRequest(c: Context<AppEnv>) {
   if (!myRouteCache) {
-    myRouteCache = await getMyRoute();
+    myRouteCache = await getMyRoute();  // Heavy library only loads here, on first request
   }
   return myRouteCache.fetch(c.req.raw, c.env, c.executionCtx);
 }
