@@ -26,8 +26,10 @@ jobs:
         run: npm run build
 
       - name: Configure account_id in wrangler.jsonc
+        env:
+          ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          sed -i 's/"account_id": "YOUR_CLOUDFLARE_ACCOUNT_ID"/"account_id": "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"/' wrangler.jsonc
+          sed -i "s/\"account_id\": \"YOUR_CLOUDFLARE_ACCOUNT_ID\"/\"account_id\": \"$ACCOUNT_ID\"/" wrangler.jsonc
 
       - name: Deploy to Cloudflare Workers
         env:
