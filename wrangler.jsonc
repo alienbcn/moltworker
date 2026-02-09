@@ -38,32 +38,7 @@
 	"build": {
 		"command": "npm run build",
 	},
-	// Container configuration for the Moltbot sandbox
-	// Using pre-built OpenClaw image from ghcr.io registry
-	"containers": [
-		{
-			"class_name": "Sandbox",
-			"image": "ghcr.io/openclaw/openclaw:latest",
-			"instance_type": "standard-1",
-			"max_instances": 1,
-		},
-	],
-	"durable_objects": {
-		"bindings": [
-			{
-				"class_name": "Sandbox",
-				"name": "Sandbox",
-			},
-		],
-	},
-	"migrations": [
-		{
-			"new_sqlite_classes": [
-				"Sandbox"
-			],
-			"tag": "v1",
-		},
-	],
+
 	// R2 bucket for persistent storage (moltbot data, conversations, etc.)
 	"r2_buckets": [
 		{
