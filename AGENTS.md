@@ -58,6 +58,14 @@ export const myRoute = new Hono();
 myRoute.get('/', (c) => heavyLibrary.doWork());
 
 // ✅ GOOD: Lazy-loaded when route is accessed, with caching
+// In routes/my-route.ts:
+import { Hono } from 'hono';
+import { heavyLibrary } from 'heavy-library';
+
+const myRoute = new Hono();
+myRoute.get('/', (c) => heavyLibrary.doWork());
+export { myRoute };
+
 // In routes/index.ts:
 export async function getMyRoute() {
   const { myRoute } = await import('./my-route');

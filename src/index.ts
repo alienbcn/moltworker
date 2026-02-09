@@ -185,12 +185,12 @@ app.route('/', publicRoutes);
 // Mount CDP routes (uses shared secret auth via query param, not CF Access)
 // Lazy-loaded to avoid loading Puppeteer at Worker startup
 // Cache the loaded module to avoid repeated dynamic imports
-let cdpModuleCache: Awaited<ReturnType<typeof getCdp>> | null = null;
+let cdpRouteCache: Awaited<ReturnType<typeof getCdp>> | null = null;
 async function handleCdpRequest(c: Context<AppEnv>) {
-  if (!cdpModuleCache) {
-    cdpModuleCache = await getCdp();
+  if (!cdpRouteCache) {
+    cdpRouteCache = await getCdp();
   }
-  return cdpModuleCache.fetch(c.req.raw, c.env, c.executionCtx);
+  return cdpRouteCache.fetch(c.req.raw, c.env, c.executionCtx);
 }
 app.all('/cdp', handleCdpRequest);
 app.all('/cdp/*', handleCdpRequest);
