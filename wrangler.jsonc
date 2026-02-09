@@ -1,6 +1,10 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "moltbot-sandbox",
+	// Cloudflare account ID - required for wrangler to deploy
+	// In GitHub Actions, this gets replaced with the actual account ID from secrets
+	// For local development: replace with your account ID from https://dash.cloudflare.com
+	"account_id": "YOUR_CLOUDFLARE_ACCOUNT_ID",
 	"main": "src/index.ts",
 	"compatibility_date": "2025-05-06",
 	"compatibility_flags": [
