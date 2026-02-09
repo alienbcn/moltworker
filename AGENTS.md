@@ -58,7 +58,7 @@ export const myRoute = new Hono();
 myRoute.get('/', (c) => heavyLibrary.doWork());
 
 // ✅ GOOD: Lazy-loaded when route is accessed, with caching
-// In routes/my-route.ts (this file won't load until getCdp() is called):
+// In routes/my-route.ts (this file won't load until getMyRoute() is called):
 import { Hono } from 'hono';
 import { heavyLibrary } from 'heavy-library';  // Safe: only loads when this module loads
 
