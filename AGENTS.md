@@ -9,7 +9,6 @@ This is a Cloudflare Worker that runs [OpenClaw](https://github.com/openclaw/ope
 - Admin UI at `/_admin/` for device management
 - API endpoints at `/api/*` for device pairing
 - Debug endpoints at `/debug/*` for troubleshooting
-- CDP (Chrome DevTools Protocol) endpoint at `/cdp` for browser automation (lazy-loaded)
 
 **Note:** The CLI tool and npm package are now named `openclaw`. Config files use `.openclaw/openclaw.json`. Legacy `.clawdbot` paths are supported for backward compatibility during transition.
 
@@ -44,11 +43,10 @@ src/
 
 ### Lazy Loading Heavy Dependencies
 
-To avoid exceeding Cloudflare Worker CPU limits during initialization, heavy dependencies like Puppeteer/Playwright are lazy-loaded:
+To avoid exceeding Cloudflare Worker CPU limits during initialization, heavy dependencies should be lazy-loaded:
 
-- **CDP Route**: The `/cdp` endpoint uses `@cloudflare/puppeteer` (~682KB), which is only loaded when the endpoint is accessed
 - **Implementation**: Use dynamic `import()` to defer loading until needed
-- **Example**: `src/routes/index.ts` exports `getCdp()` which uses `await import('./cdp')` instead of static import
+- **Pattern**: Create separate route modules and import them only when needed
 
 **Pattern for adding new heavy dependencies:**
 ```typescript

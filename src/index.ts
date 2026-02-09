@@ -20,16 +20,15 @@
  * - SLACK_BOT_TOKEN + SLACK_APP_TOKEN: Slack tokens
  */
 
-import { Hono, type Context } from 'hono';
+import { Hono } from 'hono';
 import { getSandbox, Sandbox, type SandboxOptions } from '@cloudflare/sandbox';
 
 import type { AppEnv, MoltbotEnv } from './types';
 import { MOLTBOT_PORT } from './config';
 import { createAccessMiddleware } from './auth';
 import { ensureMoltbotGateway, findExistingMoltbotProcess, syncToR2 } from './gateway';
-import { publicRoutes, api, adminUi, debug, getCdp } from './routes';
+import { publicRoutes, api, adminUi, debug } from './routes';
 import { redactSensitiveParams } from './utils/logging';
-import { cleanupInactiveChromium } from './gateway/browser-cleanup';
 import loadingPageHtml from './assets/loading.html';
 import configErrorHtml from './assets/config-error.html';
 
@@ -118,10 +117,6 @@ function buildSandboxOptions(env: MoltbotEnv): SandboxOptions {
 // Main app
 const app = new Hono<AppEnv>();
 
-// Track browser cleanup monitor status globally
-let browserCleanupStarted = false;
-const browserCleanupInterval = 5 * 60 * 1000; // 5 minutes
-
 // =============================================================================
 // MIDDLEWARE: Applied to ALL routes
 // =============================================================================
@@ -142,35 +137,6 @@ app.use('*', async (c, next) => {
   const options = buildSandboxOptions(c.env);
   const sandbox = getSandbox(c.env.Sandbox, 'moltbot', options);
   c.set('sandbox', sandbox);
-
-  // Initialize browser cleanup monitor once (non-blocking)
-  if (!browserCleanupStarted && c.env.BROWSER_CLEANUP_ENABLED === 'true') {
-    browserCleanupStarted = true;
-    console.log('[Browser] Starting auto-cleanup monitor (every 5 minutes)...');
-    
-    // Schedule periodic cleanup (non-blocking)
-    const maxIdleMs = c.env.BROWSER_MAX_IDLE_MS 
-      ? parseInt(c.env.BROWSER_MAX_IDLE_MS) 
-      : 30 * 60 * 1000; // 30 minutes default
-    
-    const interval = setInterval(async () => {
-      try {
-        const result = await cleanupInactiveChromium(sandbox, {
-          maxIdleMs,
-          checkIntervalMs: browserCleanupInterval,
-          verbose: false,
-        });
-        if (result.killed > 0) {
-          console.log(`[Browser] Cleanup: killed ${result.killed} processes, ${result.failed} failed`);
-        }
-      } catch (err) {
-        console.error('[Browser] Cleanup error:', err instanceof Error ? err.message : String(err));
-      }
-    }, browserCleanupInterval);
-
-    // Interval runs in background (no need to store reference)
-  }
-
   await next();
 });
 
@@ -181,19 +147,6 @@ app.use('*', async (c, next) => {
 // Mount public routes first (before auth middleware)
 // Includes: /sandbox-health, /logo.png, /logo-small.png, /api/status, /_admin/assets/*
 app.route('/', publicRoutes);
-
-// Mount CDP routes (uses shared secret auth via query param, not CF Access)
-// Lazy-loaded to avoid loading Puppeteer at Worker startup
-// Cache the loaded module to avoid repeated dynamic imports
-let cdpRouteCache: Awaited<ReturnType<typeof getCdp>> | null = null;
-async function handleCdpRequest(c: Context<AppEnv>) {
-  if (!cdpRouteCache) {
-    cdpRouteCache = await getCdp();
-  }
-  return cdpRouteCache.fetch(c.req.raw, c.env, c.executionCtx);
-}
-app.all('/cdp', handleCdpRequest);
-app.all('/cdp/*', handleCdpRequest);
 
 // =============================================================================
 // PROTECTED ROUTES: Cloudflare Access authentication required
