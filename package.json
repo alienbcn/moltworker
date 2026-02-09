@@ -24,7 +24,9 @@
     "hono": "^4.11.6",
     "jose": "^6.0.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "playwright": "^1.58.2",
+    "@playwright/mcp": "^0.0.64"
   },
   "devDependencies": {
     "@cloudflare/sandbox": "*",

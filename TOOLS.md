@@ -40,22 +40,56 @@ Esta documentación define cómo Jasper gestiona tokens de contexto, herramienta
 
 ## Herramientas Disponibles y Sus Límites
 
-### 1. Web Search (Brave Search API)
+### 1. Web Search (Brave Search API + Playwright Browser)
 
-**Descripción**: Buscar información actual en internet  
-**Proveedor**: Brave Search API  
-**Costo**: 1 crédito por búsqueda
+**Descripción**: Búsqueda inteligente en internet con estrategia de respaldo  
+**Proveedores**: Brave Search API (primario) + Playwright Browser (respaldo)  
+**Costo**: 1 crédito Brave por búsqueda, o compute del contenedor para Playwright
+
+#### Estrategia de Búsqueda
+
+```
+Usuario solicita búsqueda web
+           │
+           ▼
+    ┌─────────────────┐
+    │ ¿BRAVE_API_KEY? │
+    └─────────────────┘
+           │
+      ┌────┴────┐
+      │         │
+     SÍ        NO
+      │         │
+      ▼         ▼
+┌──────────┐  ┌─────────────┐
+│ Brave API│  │ Playwright  │
+│ (rápido) │  │ (completo)  │
+└──────────┘  └─────────────┘
+      │              │
+      ▼              │
+   ¿Éxito?           │
+      │              │
+   ┌──┴──┐           │
+   │     │           │
+  SÍ    NO           │
+   │     │           │
+   │     └───────────┘
+   │         │
+   ▼         ▼
+ Resultado  Playwright
+             (fallback)
+```
 
 #### Límites de Uso
 
-| Parámetro | Valor | Notas |
-|-----------|-------|-------|
-| Máx búsquedas/llamada | 3 | Evitar loops infinitos |
-| Máx búsquedas/minuto | 30 | Rate limit Brave |
-| Máx búsquedas/hora | 500 | Límite diario: 10,000 |
-| Timeout por búsqueda | 10s | Total máx: 30s |
-| Tokens reservados | 500-1,000 | Resumen + resultados |
-| Costo mensual est. | $1-5 | Según 10k búsquedas |
+| Parámetro | Brave API | Playwright Browser |
+|-----------|-----------|-------------------|
+| Máx búsquedas/llamada | 3 | 1-2 (más lento) |
+| Máx búsquedas/minuto | 30 | 5-10 (límite memoria) |
+| Timeout por búsqueda | 10s | 30s |
+| Tokens reservados | 500-1,000 | 1,000-2,000 |
+| Casos de uso | Texto, noticias | JavaScript, SPAs, visual |
+| Costo mensual est. | $1-5 (10k búsq.) | Incluido en compute |
 
 #### Cuándo Usar ✅
 
@@ -65,10 +99,16 @@ Esta documentación define cómo Jasper gestiona tokens de contexto, herramienta
 ✅ Requiere URLs o fuentes confiables
 ✅ Pregunta sobre noticias, precios, clima
 ✅ Usuario solicita expresamente búsqueda
+✅ Sitios JavaScript/SPAs que no funcionan con API (usar Playwright)
+✅ Necesita screenshot o contenido visual (usar Playwright)
+✅ Formularios o interacciones web (usar Playwright)
 
-Ejemplo:
+Ejemplos:
 "¿Qué pasó el día de hoy en tech?"
-→ Buscar → Resumir → Proporcionar URLs
+→ Brave API → Resumir → Proporcionar URLs
+
+"Dame el precio actual de ETH en Coinbase"
+→ Brave API primero → Si falla → Playwright navega y extrae
 ```
 
 #### Cuándo NO Usar ❌
@@ -76,7 +116,7 @@ Ejemplo:
 ```
 ❌ Preguntas sobre hechos históricos bien conocidos
 ❌ Usuario pregunta algo típicamente conocido de ML
-❌ Tiempo de respuesta crítico (<5 segundos)
+❌ Tiempo de respuesta crítico (<3 segundos, usar solo Brave)
 ❌ Ya tengo información reciente en contexto
 ❌ Usuario dice "no necesito búsqueda"
 
@@ -85,10 +125,22 @@ Ejemplo:
 → Responder directamente (París), no buscar
 ```
 
+#### Playwright vs Brave API - Guía de Decisión
+
+| Caso | Método | Razón |
+|------|--------|-------|
+| Búsqueda de noticias | Brave API | Rápido, confiable para texto |
+| Precio de acciones | Brave API primero | Usualmente disponible en meta tags |
+| Aplicación React/Vue | Playwright | Requiere renderizado JavaScript |
+| Llenar formularios | Playwright | Necesita automatización completa |
+| Captura visual | Playwright | Puede tomar screenshots |
+| Rate limit concern | Brave API | Límites más generosos |
+| Múltiples páginas | Brave API | Más eficiente para batch |
+
 #### Control de Exceso
 
 ```javascript
-// Implementación pseudo-código
+// Implementación pseudo-código para búsqueda inteligente
 const SEARCH_LIMITS = {
   perCall: 3,           // Máx 3 búsquedas
   perMinute: 30,        // Throttle global
@@ -97,22 +149,17 @@ const SEARCH_LIMITS = {
 };
 
 async function executeSearch(query: string): Promise<boolean> {
-  // 1. Check límite global
-  if (getRecentSearchCount('hour') >= SEARCH_LIMITS.perHour) {
-    throw new Error('Límite horario de búsquedas alcanzado');
+  // 1. Intentar con Brave API primero (si disponible)
+  if (process.env.BRAVE_SEARCH_API_KEY) {
+    try {
+      return await braveSearch(query, { timeout: 10000 });
+    } catch (error) {
+      console.warn('Brave API failed, falling back to Playwright');
+    }
   }
-
-  // 2. Check límite por llamada
-  if (this.searchesThisCall >= SEARCH_LIMITS.perCall) {
-    console.warn('Ya hice 3 búsquedas. Usando contexto existente.');
-    return false;
-  }
-
-  // 3. Ejecutar con timeout
-  return await executeWithTimeout(
-    search(query),
-    SEARCH_LIMITS.timeoutMs
-  );
+  
+  // 2. Fallback a Playwright si Brave falla o no está disponible
+  return await playwrightSearch(query, { timeout: 30000 });
 }
 ```
 
